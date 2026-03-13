@@ -1,0 +1,90 @@
+Instructions for Replit (developer brief)
+
+Scope (authoritative sources)
+Fetch the latest monthly provider-level files for:
+• Referral to Treatment (RTT) waiting times (provider data pages per financial year; prefer the “Full CSV data file”). 
+NHS England
+
+• A&E attendances and emergency admissions (monthly provider CSV). 
+NHS England
++1
+
+• Cancer Waiting Times (CWT): Faster Diagnosis (28-day), 31-day, 62-day combined; use the provider data extract workbooks. 
+NHS England
+
+• Organisation Data Service (ODS) / ORD API for Trust codes and names (for lookups and joins). 
+NHS England Digital
++1
+
+• Model Health System (MHS): benchmarking via manual CSV export only (credentialed, no public API). 
+NHS England
+Getting It Right First Time - GIRFT
+
+Replit project set-up
+• New Python Repl.
+• Dependencies (requirements.txt): fastapi, uvicorn[standard], pandas, requests, beautifulsoup4, lxml, openpyxl, PyYAML, python-multipart.
+• Secrets:
+– GROUP_ODS_LIST e.g. RM1,RGP,RCX (replace with your Trust ODS codes)
+– TZ Europe/London
+
+File layout
+/app
+/fetchers rtt.py, ae.py, cancer.py
+/utils ods.py, io.py, audit.py
+/config thresholds.yaml (if you want status bands)
+/data
+/raw (date-stamped downloads)
+/processed (clean outputs for dashboards)
+/mhs (manual uploads from Model Health System)
+app.py
+
+Fetcher pattern (all three datasets)
+• Discover the latest link on the official NHS England statistics page (scrape anchor text; pick the first match).
+• Download and save the raw file with a date stamp under /data/raw.
+• Parse:
+– RTT: open “Full CSV data file” ZIP; select provider-level CSV; standardise the provider code column; filter on GROUP_ODS_LIST. 
+NHS England
+
+– A&E: use the monthly provider CSV; keep attendances, % within 4 hours, 12-hour decision-to-admit breaches; filter by ODS. 
+NHS England
+
+– Cancer: open the latest provider extract workbook; read sheets for 28-day, 31-day, 62-day; compute weighted percentages (numerator/denominator) by provider; filter by ODS. Also keep numerators/denominators for transparency. 
+NHS England
+
+• ODS lookups: resolve Trust names/types each run via ORD API and cache locally for joins and labelling. 
+NHS England Digital
+
+Processing and outputs
+For each run, write:
+• rtt_provider.csv – filtered rows for your Trusts.
+• ae_provider.csv – filtered rows for your Trusts.
+• cwt_28d.csv, cwt_31d.csv, cwt_62d.csv – filtered provider tables with numerator, denominator, and computed %.
+• group_summary.json – totals/percentages rolled up across all specified Trusts, plus last-updated timestamps and source URLs.
+• audit.jsonl – append one line per source with: dataset name, resolved URL, file hash (SHA-256), byte size, and processing success/failure.
+
+FastAPI endpoints
+• GET /status – returns ODS list, last run time, counts of raw/processed files.
+• POST /run – executes a full fetch-process cycle and returns a JSON summary.
+• POST /upload/mhs – accepts a manual CSV export from MHS; save under /data/mhs and run a small routine to compute peer percentile vs median (note: do not script login/scraping). 
+NHS England
+
+Scheduler options
+• Use Replit’s scheduled tasks or an external cron (e.g. UptimeRobot/GitHub Actions) to POST /run the day after publication. The A&E page lists the publication cadence; align your schedule to avoid partial refreshes (e.g., run when the new month appears on both A&E and RTT pages). 
+NHS England
++1
+
+Validation and QA
+• Schema checks: verify expected columns exist; fail fast if missing.
+• Range checks: percentages ∈ [0,1]; counts ≥ 0.
+• Reconciliation: RTT “total incomplete” equals the sum of bands; alert if not.
+• Month-over-month deltas: flag extreme changes for human review.
+• Label any weekly/management information as such if you later add it; keep official monthly statistics as the core. 
+NHS England
+
+Licensing and attribution
+• Add a footer to all processed outputs stating “Source: NHS England official statistics; data reused under OGL v3.0” and retain the publication URL in group_summary.json. 
+NHS England
+
+Model Health System benchmarking
+• Because access is credentialed and there’s no public API, rely on a nominated user to export benchmarks and upload via POST /upload/mhs. Compute your position vs peer median and output mhs_benchmarks.json for dashboards. 
+NHS England
