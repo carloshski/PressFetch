@@ -1,0 +1,35 @@
+# NHS England Data Processing Thresholds Configuration
+
+# RTT waiting times status bands (weeks)
+rtt_thresholds:
+  excellent: 4
+  good: 8
+  amber: 12
+  red: 18
+
+# A&E performance thresholds (percentages)
+ae_thresholds:
+  target_4_hour: 0.95  # 95% target
+  amber: 0.85
+  red: 0.75
+
+# Cancer waiting times thresholds (percentages)
+cancer_thresholds:
+  target_28_day: 0.75  # 75% target
+  target_31_day: 0.96  # 96% target  
+  target_62_day: 0.85  # 85% target
+  amber: 0.80
+  red: 0.70
+
+# Data validation ranges
+validation:
+  percentage_min: 0.0
+  percentage_max: 1.0
+  count_min: 0
+  extreme_change_threshold: 0.3  # 30% change month-over-month
+
+# File retention (days)
+retention:
+  raw_files: 365
+  processed_files: 180
+  audit_logs: 730
