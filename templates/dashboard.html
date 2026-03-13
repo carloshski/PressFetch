@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NHS England Data Explorer</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+</head>
+<body>
+    <div class="header">
+        <div class="header-inner">
+            <h1>NHS England Data Explorer</h1>
+            <p>Search, fetch and analyse NHS healthcare statistics for any Trust</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="section">
+            <div class="stats" id="stats-bar">
+                <div class="stat"><div class="num" id="stat-trusts">-</div><div class="label">Selected Trusts</div></div>
+                <div class="stat"><div class="num" id="stat-raw">-</div><div class="label">Raw Files</div></div>
+                <div class="stat"><div class="num" id="stat-processed">-</div><div class="label">Processed Files</div></div>
+                <div class="stat"><div class="num" id="stat-ops">-</div><div class="label">Operations (24h)</div></div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Trust Selector</h2>
+            <div class="trust-selector">
+                <div class="search-box">
+                    <input type="text" id="trust-search" placeholder="Search for any NHS Trust by name or ODS code..." autocomplete="off">
+                    <div id="search-results" class="search-results"></div>
+                </div>
+                <div class="selected-trusts" id="selected-trusts"></div>
+                <div class="trust-actions">
+                    <button class="btn small" onclick="fetchDataForSelected()">Fetch Data for Selected Trusts</button>
+                    <button class="btn small secondary" onclick="clearAll()">Clear All</button>
+                    <div class="favourites-wrap">
+                        <button class="btn small secondary" onclick="saveFavourite()">Save as Favourite</button>
+                        <select id="favourites-select" class="favourites-select" onchange="loadFavourite(this.value)">
+                            <option value="">Load Favourites...</option>
+                        </select>
+                        <button class="btn small secondary btn-icon" onclick="deleteFavourite()" title="Delete selected favourite">&#128465;</button>
+                    </div>
+                    <span class="spinner" id="fetch-spinner"></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Datasets</h2>
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('summary')">Summary</button>
+                <button class="tab" onclick="switchTab('compare')">Compare</button>
+                <button class="tab" onclick="switchTab('rtt')">RTT</button>
+                <button class="tab" onclick="switchTab('ae')">A&amp;E</button>
+                <button class="tab" onclick="switchTab('cancer')">Cancer</button>
+                <button class="tab" onclick="switchTab('diagnostics')">Diagnostics</button>
+                <button class="tab" onclick="switchTab('ambulance')">Ambulance</button>
+                <button class="tab" onclick="switchTab('workforce')">Workforce</button>
+                <button class="tab" onclick="switchTab('community')">Community</button>
+                <button class="tab" onclick="switchTab('maternity')">Maternity</button>
+            </div>
+
+            <div class="tab-content active" id="tab-summary">
+                <div id="freshness-bar" class="freshness-bar"></div>
+                <div class="summary-grid" id="summary-content">
+                    <p class="muted">Search for any NHS Trust above, select it, then click "Fetch Data" to see summary metrics.</p>
+                </div>
+            </div>
+
+            <div class="tab-content" id="tab-compare">
+                <div class="compare-header">
+                    <h3>Trust Comparison</h3>
+                    <p class="muted-inline">Select 2 or more trusts and fetch data to compare performance side by side.</p>
+                </div>
+                <div id="compare-content">
+                    <p class="muted">No comparison data yet. Select multiple trusts and fetch data first.</p>
+                </div>
+            </div>
+
+            <div class="tab-content" id="tab-rtt">
+                <div class="data-header">
+                    <h3>RTT Waiting Times</h3>
+                    <div class="data-header-controls">
+                        <div class="date-filter">
+                            <label>From</label><input type="text" class="date-input" id="rtt-date-from" placeholder="e.g. 2024-01">
+                            <label>To</label><input type="text" class="date-input" id="rtt-date-to" placeholder="e.g. 2025-12">
+                            <button class="btn small secondary" onclick="applyDateFilter('rtt')">Filter</button>
+                            <button class="btn small secondary" onclick="clearDateFilter('rtt')">Clear</button>
+                        </div>
+                        <button class="btn small secondary" onclick="downloadCSV('rtt')">Download CSV</button>
+                    </div>
+                </div>
+                <div id="rtt-freshness" class="freshness-tag"></div>
+                <div id="rtt-summary" class="metric-cards"></div>
+                <div class="table-wrap"><table id="rtt-table"><thead><tr><th>Loading...</th></tr></thead><tbody></tbody></table></div>
+                <p class="muted" id="rtt-empty">No RTT data available. Fetch data first.</p>
+            </div>
+
+            <div class="tab-content" id="tab-ae">
+                <div class="data-header">
+                    <h3>A&amp;E Attendances &amp; Emergency Admissions</h3>
+                    <div class="data-header-controls">
+                        <div class="date-filter">
+                            <label>From</label><input type="text" class="date-input" id="ae-date-from" placeholder="e.g. 2024-01">
+                            <label>To</label><input type="text" class="date-input" id="ae-date-to" placeholder="e.g. 2025-12">
+                            <button class="btn small secondary" onclick="applyDateFilter('ae')">Filter</button>
+                            <button class="btn small secondary" onclick="clearDateFilter('ae')">Clear</button>
+                        </div>
+                        <button class="btn small secondary" onclick="downloadCSV('ae')">Download CSV</button>
+                    </div>
+                </div>
+                <div id="ae-freshness" class="freshness-tag"></div>
+                <div id="ae-summary" class="metric-cards"></div>
+                <div class="table-wrap"><table id="ae-table"><thead><tr><th>Loading...</th></tr></thead><tbody></tbody></table></div>
+                <p class="muted" id="ae-empty">No A&amp;E data available. Fetch data first.</p>
+            </div>
+
+            <div class="tab-content" id="tab-cancer">
+                <div class="data-header">
+                    <h3>Cancer Waiting Times</h3>
+                    <div class="data-header-controls">
+                        <div class="date-filter">
+                            <label>From</label><input type="text" class="date-input" id="cancer-date-from" placeholder="e.g. 2024-01">
+                            <label>To</label><input type="text" class="date-input" id="cancer-date-to" placeholder="e.g. 2025-12">
+                            <button class="btn small secondary" onclick="applyDateFilter('cancer')">Filter</button>
+                            <button class="btn small secondary" onclick="clearDateFilter('cancer')">Clear</button>
+                        </div>
+                        <button class="btn small secondary" onclick="downloadCSV('cancer')">Download CSV</button>
+                    </div>
+                </div>
+                <div id="cancer-freshness" class="freshness-tag"></div>
+                <div id="cancer-summary" class="metric-cards"></div>
+                <div class="table-wrap"><table id="cancer-table"><thead><tr><th>Loading...</th></tr></thead><tbody></tbody></table></div>
+                <p class="muted" id="cancer-empty">No Cancer data available. Fetch data first.</p>
+            </div>
+
+            <div class="tab-content" id="tab-diagnostics">
+                <div class="data-header">
+                    <h3>Diagnostics (DM01) Waiting Times</h3>
+                    <div class="data-header-controls">
+                        <div class="date-filter">
+                            <label>From</label><input type="text" class="date-input" id="diagnostics-date-from" placeholder="e.g. 2024-01">
+                            <label>To</label><input type="text" class="date-input" id="diagnostics-date-to" placeholder="e.g. 2025-12">
+                            <button class="btn small secondary" onclick="applyDateFilter('diagnostics')">Filter</button>
+                            <button class="btn small secondary" onclick="clearDateFilter('diagnostics')">Clear</button>
+                        </div>
+                        <button class="btn small secondary" onclick="downloadCSV('diagnostics')">Download CSV</button>
+                    </div>
+                </div>
+                <div id="diagnostics-freshness" class="freshness-tag"></div>
+                <div id="diagnostics-summary" class="metric-cards"></div>
+                <div class="table-wrap"><table id="diagnostics-table"><thead><tr><th>Loading...</th></tr></thead><tbody></tbody></table></div>
+                <p class="muted" id="diagnostics-empty">No Diagnostics data available. Fetch data first.</p>
+            </div>
+
+            <div class="tab-content" id="tab-ambulance">
+                <div class="data-header">
+                    <h3>Ambulance Response Times (AmbSYS)</h3>
+                    <div class="data-header-controls">
+                        <div class="date-filter">
+                            <label>From</label><input type="text" class="date-input" id="ambulance-date-from" placeholder="e.g. 2024-01">
+                            <label>To</label><input type="text" class="date-input" id="ambulance-date-to" placeholder="e.g. 2025-12">
+                            <button class="btn small secondary" onclick="applyDateFilter('ambulance')">Filter</button>
+                            <button class="btn small secondary" onclick="clearDateFilter('ambulance')">Clear</button>
+                        </div>
+                        <button class="btn small secondary" onclick="downloadCSV('ambulance')">Download CSV</button>
+                    </div>
+                </div>
+                <div id="ambulance-freshness" class="freshness-tag"></div>
+                <div id="ambulance-summary" class="metric-cards"></div>
+                <div class="table-wrap"><table id="ambulance-table"><thead><tr><th>Loading...</th></tr></thead><tbody></tbody></table></div>
+                <p class="muted" id="ambulance-empty">No Ambulance data available. Fetch data first.</p>
+            </div>
+
+            <div class="tab-content" id="tab-workforce">
+                <div class="data-header">
+                    <h3>NHS Workforce Statistics</h3>
+                    <div class="data-header-controls">
+                        <div class="date-filter">
+                            <label>From</label><input type="text" class="date-input" id="workforce-date-from" placeholder="e.g. 2024-01">
+                            <label>To</label><input type="text" class="date-input" id="workforce-date-to" placeholder="e.g. 2025-12">
+                            <button class="btn small secondary" onclick="applyDateFilter('workforce')">Filter</button>
+                            <button class="btn small secondary" onclick="clearDateFilter('workforce')">Clear</button>
+                        </div>
+                        <button class="btn small secondary" onclick="downloadCSV('workforce')">Download CSV</button>
+                    </div>
+                </div>
+                <div id="workforce-freshness" class="freshness-tag"></div>
+                <div id="workforce-summary" class="metric-cards"></div>
+                <div class="table-wrap"><table id="workforce-table"><thead><tr><th>Loading...</th></tr></thead><tbody></tbody></table></div>
+                <p class="muted" id="workforce-empty">No Workforce data available. Fetch data first.</p>
+            </div>
+
+            <div class="tab-content" id="tab-community">
+                <div class="data-header">
+                    <h3>Community Services Statistics</h3>
+                    <div class="data-header-controls">
+                        <div class="date-filter">
+                            <label>From</label><input type="text" class="date-input" id="community-date-from" placeholder="e.g. 2024-01">
+                            <label>To</label><input type="text" class="date-input" id="community-date-to" placeholder="e.g. 2025-12">
+                            <button class="btn small secondary" onclick="applyDateFilter('community')">Filter</button>
+                            <button class="btn small secondary" onclick="clearDateFilter('community')">Clear</button>
+                        </div>
+                        <button class="btn small secondary" onclick="downloadCSV('community')">Download CSV</button>
+                    </div>
+                </div>
+                <div id="community-freshness" class="freshness-tag"></div>
+                <div id="community-summary" class="metric-cards"></div>
+                <div class="table-wrap"><table id="community-table"><thead><tr><th>Loading...</th></tr></thead><tbody></tbody></table></div>
+                <p class="muted" id="community-empty">No Community data available. Fetch data first.</p>
+            </div>
+
+            <div class="tab-content" id="tab-maternity">
+                <div class="data-header">
+                    <h3>Maternity Services Data</h3>
+                    <div class="data-header-controls">
+                        <div class="date-filter">
+                            <label>From</label><input type="text" class="date-input" id="maternity-date-from" placeholder="e.g. 2024-01">
+                            <label>To</label><input type="text" class="date-input" id="maternity-date-to" placeholder="e.g. 2025-12">
+                            <button class="btn small secondary" onclick="applyDateFilter('maternity')">Filter</button>
+                            <button class="btn small secondary" onclick="clearDateFilter('maternity')">Clear</button>
+                        </div>
+                        <button class="btn small secondary" onclick="downloadCSV('maternity')">Download CSV</button>
+                    </div>
+                </div>
+                <div id="maternity-freshness" class="freshness-tag"></div>
+                <div id="maternity-summary" class="metric-cards"></div>
+                <div class="table-wrap"><table id="maternity-table"><thead><tr><th>Loading...</th></tr></thead><tbody></tbody></table></div>
+                <p class="muted" id="maternity-empty">No Maternity data available. Fetch data first.</p>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Actions</h2>
+            <div class="actions-bar">
+                <button class="btn" onclick="runPipeline()" id="run-btn">Run Pipeline for Selected Trusts</button>
+                <a class="btn secondary" href="#" onclick="openReport(); return false;">Printable Report</a>
+                <a class="btn secondary" href="/docs" target="_blank">API Documentation</a>
+                <span class="spinner" id="pipeline-spinner"></span>
+            </div>
+            <div id="pipeline-result" class="result-box"></div>
+        </div>
+    </div>
+
+    <script src="/static/js/dashboard.js"></script>
+</body>
+</html>
