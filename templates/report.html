@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NHS Trust Performance Report</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="/static/css/report.css">
+</head>
+<body>
+    <div class="report-controls no-print">
+        <a href="/" class="back-link">&larr; Back to Dashboard</a>
+        <div class="control-bar">
+            <div class="search-wrap">
+                <input type="text" id="trust-search" placeholder="Search for trusts to include in report..." autocomplete="off">
+                <div id="search-results" class="search-results"></div>
+            </div>
+            <div class="selected-trusts" id="selected-trusts"></div>
+            <div class="control-actions">
+                <button class="btn" onclick="generateReport()">Generate Report</button>
+                <button class="btn secondary" onclick="window.print()">Print / Save PDF</button>
+                <span class="spinner" id="report-spinner"></span>
+            </div>
+        </div>
+    </div>
+
+    <div id="report-body" class="report-body">
+        <div class="report-placeholder">
+            <p>Search for trusts above and click "Generate Report" to create a printable performance summary with trend charts.</p>
+        </div>
+    </div>
+
+    <script>
+    window._urlTrusts = {};
+    (function() {
+        var params = new URLSearchParams(window.location.search);
+        params.getAll('t').forEach(function(entry) {
+            var idx = entry.indexOf(':');
+            if (idx > 0) {
+                window._urlTrusts[entry.substring(0, idx)] = entry.substring(idx + 1);
+            }
+        });
+    })();
+    </script>
+    <script src="/static/js/report.js"></script>
+</body>
+</html>
